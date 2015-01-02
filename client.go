@@ -1,40 +1,53 @@
+// Interfaces for a client to establish a TFO connection to a server
+
 package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"syscall"
 )
 
-const MSG_FASTOPEN int = 0x20000000
+type TFOClient struct {
+	ServerAddr [4]byte
+	ServerPort int
+	fd         int
+}
 
-func clientSend() (err error) {
+// Create a tcp socket and send data on it. This uses the sendto() system call
+// instead of connect() - because connect() calls does not support sending
+// data in the syn packet, but the sendto() system call does (as often used in
+// connectionless protocols such as udp.
+func (c *TFOClient) Send() (err error) {
 
-	log.Println("Creating client socket...")
-
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0)
+	c.fd, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0)
 	if err != nil {
 		return
 	}
-	defer syscall.Close(fd)
+	defer syscall.Close(c.fd)
 
-	log.Println("Got client socket FD:", fd)
+	sa := &syscall.SockaddrInet4{Addr: c.ServerAddr, Port: c.ServerPort}
 
-	sa := &syscall.SockaddrInet4{Port: 2222, Addr: [4]byte{127, 0, 0, 1}}
+	// Data to appear, if an existing tcp fast open cookie is available, this
+	// data will appear in the SYN packet, if not, it will appear in the ACK.
+	data := []byte("Hello TCP Fast Open")
 
-	//data := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0}
-	data := []byte("HELLO TCP FO")
+	log.Printf("Client: Sending to server: %#v\n", string(data))
 
-	log.Printf("Sending to server: %#v\n", data)
-
-	err = syscall.Sendto(fd, data, MSG_FASTOPEN, sa)
+	// Use the sendto() syscall, instead of connect()
+	err = syscall.Sendto(c.fd, data, syscall.MSG_FASTOPEN, sa)
 	if err != nil {
 		if err == syscall.EOPNOTSUPP {
-			return errors.New("TCP Fast Open client support is unavailable (unsupported kernel or disabled, see /proc/sys/net/ipv4/tcp_fastopen).")
+			err = errors.New("TCP Fast Open client support is unavailable (unsupported kernel or disabled, see /proc/sys/net/ipv4/tcp_fastopen).")
 		}
-		log.Println("Got error sending to server:", err)
+		err = errors.New(fmt.Sprintf("Received error in sendTo():", err))
 		return
 	}
+
+	// Note, this exists before waiting for response and is meant to illustrate
+	// the use of the sendto() system call, not of a complete and proper socket
+	// setup and teardown processes.
 
 	return
 }
