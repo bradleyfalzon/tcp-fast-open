@@ -37,11 +37,13 @@ Therefore, for this program, you'll need to use tcpdump to analyse the packets y
 2222`
 
 When analysing the traces, pay particular attention to the following:
+
 1. SYN packet should not contain data (like most standard SYN packets), but should contain to TFO option.
 2. SYN-ACK response should contain a cookie to be cached by the client
 3. ACK packet, as usual, contains data (and PUSH bit)
 
 On the second, and consecutive connections, the following behaviour should occur:
+
 1. SYN packet contains data, as well as TFO option and cookie
 2. Usual SYN-ACK response
 3. ACK packet contains no data
