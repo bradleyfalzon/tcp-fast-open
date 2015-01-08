@@ -24,6 +24,32 @@ server architecture with correct tear down.
 Note: Go itself provides better handlers for establishing and listening to sockets via the
 [net](https://golang.org/pkg/net/) package, but these packages don't currently provide TFO support.
 
+Usage
+=====
+
+```bash
+Usage of ./tcp-fast-open:
+Options:
+  -s 127.0.0.1  --server=127.0.0.1  Server to connect to (and listen if listening)
+  -p 2222       --port=2222         Port to connect to (and listen to if listening)
+  -l            --listen            Create a listening TFO socket
+                --help              show usage message
+```
+
+Create a listening socket, then connect to it:
+```bash
+tcp-fast-open -l
+```
+
+Connect to remote server:
+
+```bash
+tcp-fast-open -s 192.0.2.1 -p 80
+```
+
+Once connected, you'll need to use `ip tcp_metrics` (check for `fo_cookie`) or `tcpdump` to determine whether a TFO connection was successful.
+
+
 Behaviour
 =========
 
